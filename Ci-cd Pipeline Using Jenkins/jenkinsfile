@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_REPO = 'your-docker-hub-repowordpress'
+        DOCKER_HUB_CREDENTIALS = 'docker-hub-credentials-id'
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch 'main', url 'httpsgithub.comyour-repowordpress.git'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build(${DOCKER_HUB_REPO}latest)
+                }
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('', ${DOCKER_HUB_CREDENTIALS}) {
+                        docker.image(${env.DOCKER_HUB_REPO}latest).push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Docker') {
+            steps {
+                script {
+                    sh '''
+                    docker stop wordpress  true
+                    docker rm wordpress  true
+                    docker run -d --name wordpress -p 808080 ${env.DOCKER_HUB_REPO}latest
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
